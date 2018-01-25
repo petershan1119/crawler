@@ -31,4 +31,4 @@ from utils import *
 #     print(item)
 
 if __name__ == '__main__':
-    get_top100_list()
+    get_top100_list(refresh_html=True)

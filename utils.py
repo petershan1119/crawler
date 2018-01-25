@@ -7,28 +7,39 @@ def get_top100_list(refresh_html=False):
 
     root_dir = os.path.dirname(os.path.abspath(__name__))
     path_data_dir = os.path.join(root_dir, 'data')
-    url_chart_realtime_50 = 'https://www.melon.com/chart/index.htm'
-    url_chart_realtime_100 = 'https://www.melon.com/chart/index.htm#params%5Bidx%5D=51'
+    url_chart_realtime = 'https://www.melon.com/chart/index.htm'
 
 
     if not os.path.isdir(path_data_dir):
         os.mkdir(path_data_dir)
 
-    file_path = os.path.join(path_data_dir, 'chart_realtime_50.html')
+    file_path = os.path.join(path_data_dir, 'chart_realtime.html')
 
-    if not os.path.isfile(file_path):
+    if not os.path.isfile(file_path) or refresh_html is True:
         with open(file_path, 'wt') as f:
-            response = requests.get(url_chart_realtime_50)
+            response = requests.get(url_chart_realtime)
             source = response.text
             f.write(source)
 
-    file_path = os.path.join(path_data_dir, 'chart_realtime_100.html')
 
-    if not os.path.isfile(file_path):
-        with open(file_path, 'wt') as f:
-            response = requests.get(url_chart_realtime_100)
-            source = response.text
-            f.write(source)
+    # file_path = os.path.join(path_data_dir, 'chart_realtime_50.html')
+    # try:
+    #     file_mode = 'wt' if refresh_html else 'xt'
+    #     with open(file_path, file_mode) as f:
+    #         response = requests.get(url_chart_realtime_50)
+    #         source = response.text
+    #         f.write(source)
+    # except FileExistsError:
+    #     print(f'"{file_path}" file is already exists!')
+    #
+    # file_path = os.path.join(path_data_dir, 'chart_realtime_100.html')
+    # try:
+    #     with open(file_path, 'xt') as f:
+    #         response = requests.get(url_chart_realtime_100)
+    #         source = response.text
+    #         f.write(source)
+    # except FileExistsError:
+    #     print(f'"{file_path}" file is already exists!')
 
 
 
