@@ -1,9 +1,6 @@
-import re
-from bs4 import BeautifulSoup
-from utils import *
-
+from utils import get_top100_list
 
 if __name__ == '__main__':
-    result = get_top100_list(refresh_html=True)
+    result = get_top100_list()
     for item in result:
-        print(item)
+        print(f'{item["rank"]:3}: {item["title"]}')
