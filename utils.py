@@ -2,7 +2,6 @@ import re
 import os
 import requests
 from bs4 import BeautifulSoup
-from datetime import date
 
 def get_top100_list(refresh_html=False):
 
@@ -58,5 +57,4 @@ def get_top100_list(refresh_html=False):
             'album': album,
         })
 
-    for item in result:
-        print(item)
+    return result
