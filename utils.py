@@ -14,7 +14,7 @@ def get_top100_list(refresh_html=False):
     :return: 곡 정보 dict의 list
     """
     # utils가 있는
-    path_module = os.path.abspath(__name__)
+    path_module = os.path.abspath(__file__)
     print(f'path_module: \n{path_module}')
 
     # 프로젝트 컨테이너 폴더 경로
@@ -57,7 +57,7 @@ def get_top100_list(refresh_html=False):
 
     # 1. source변수에 위에 정의해놓은 file_path(data/chart_realtime.html)의
     #       파일 내용을 읽어온 결과를 할당
-    f = open(file_path, 'rt')
+    f = open(file_path, 'rt', encoding='utf8')
     source = f.read()
     f.close()
     # 2. soup변수에 BeautifulSoup클래스 호출에 source를 전달해 만들어진 인스턴스를 할당
@@ -78,6 +78,7 @@ def get_top100_list(refresh_html=False):
         # .*?/ -> '/'이 나오기 전까지의 최소 반복
         p = re.compile(r'(.*\..*?)/')
         url_img_cover = re.search(p, url_img_cover).group(1)
+        song_id = tr['data-song-no']
 
         result.append({
             'rank': rank,
@@ -85,7 +86,7 @@ def get_top100_list(refresh_html=False):
             'url_img_cover': url_img_cover,
             'artist': artist,
             'album': album,
-            'song_id': '<추가해주세요>',
+            'song_id': song_id
         })
     return result
 
@@ -101,4 +102,67 @@ def get_song_detail(song_id):
     :param song_id: 곡 정보 dict
     :return:
     """
-    pass
+    path_module = os.path.abspath(__file__)
+    root_dir = os.path.dirname(path_module)
+    path_data_dir = os.path.join(root_dir, 'data/songs')
+    os.makedirs(path_data_dir, exist_ok=True)
+
+    url_song_id_common = 'https://www.melon.com/song/detail.htm?songId='
+    url_song_id_each = url_song_id_common + str(song_id)
+
+    file_path = os.path.join(path_data_dir, '{}.html'.format(str(song_id)))
+
+    try:
+        with open(file_path, 'wt', encoding="utf8") as f:
+            response = requests.get(url_song_id_each)
+            source = response.text
+            f.write(source)
+    except FileExistsError:
+        print(f'"{file_path}" file is already exists!')
+
+    f = open(file_path, 'rt', encoding='utf8')
+    source = f.read()
+    f.close()
+
+    soup = BeautifulSoup(source, 'lxml')
+
+    song_title = soup.find('div', class_='song_name').text[3:].strip()
+    song_artist = soup.find('div', class_='artist').text.strip()
+
+    song_meta = soup.find('div', class_='meta')
+    song_meta_dt = song_meta.find_all('dt')
+
+    song_album = song_meta_dt[0].next_sibling.next_sibling.find('a').text
+    song_release_date = song_meta_dt[1].next_sibling.next_sibling.text
+    song_genre = song_meta_dt[2].next_sibling.next_sibling.text
+    song_flac = song_meta_dt[3].next_sibling.next_sibling.text
+
+    song_lyrics = soup.find('div', class_='lyric').text.strip()
+
+    prdcr = soup.find('div', class_='section_prdcr')
+
+    if prdcr:
+        song_prdrc_dict = {}
+        for entry in soup.find('div', class_='section_prdcr').find_all('div', class_='entry'):
+            entry_name = entry.find('a').text
+            entry_type = entry.find(class_='type').text
+            song_prdrc_dict.setdefault(entry_type, [])
+            song_prdrc_dict[entry_type].append(entry_name)
+    else:
+        song_prdrc_dict = {}
+
+    result = []
+    result.append({
+        'song_id': song_id,
+        'song_title': song_title,
+        'song_artist': song_artist,
+        'song_album': song_album,
+        'song_release_date': song_release_date,
+        'song_genre': song_genre,
+        'song_flac': song_flac,
+        'song_lyrics': song_lyrics,
+    })
+
+    result[0].update(song_prdrc_dict)
+
+    return result
