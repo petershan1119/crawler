@@ -166,3 +166,36 @@ def get_song_detail(song_id):
     result[0].update(song_prdrc_dict)
 
     return result
+
+
+def search_result(song_name):
+    url = f'https://www.melon.com/search/song/index.htm'
+    params = {
+        'q': song_name,
+        'section': 'song',
+    }
+    response = requests.get(url, params)
+    source = response.text
+
+    soup = BeautifulSoup(source, 'lxml')
+
+    song_table = soup.tbody.find_all('tr')
+
+    result_final = []
+    for item in song_table:
+        song_elements = item.find_all('td')
+
+        song_name = song_elements[2].find(class_='fc_gray').text
+        song_artist = song_elements[3].find(class_="checkEllipsisSongdefaultList").text
+        song_album = song_elements[4].find(class_="fc_mgray").text
+
+
+        result = [{
+            'song_name': song_name,
+            'song_artist': song_artist,
+            'song_album': song_album
+        }]
+        result_final.append(result)
+
+
+    return result_final
