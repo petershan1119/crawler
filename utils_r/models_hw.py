@@ -4,10 +4,9 @@ from bs4 import BeautifulSoup, NavigableString
 
 PATH_MODULE = os.path.abspath(__file__)
 #PATH_MODULE = '/Users/sangwonhan/projects/crawler/utils_r'
-ROOT_DIR = os.path.dirname(PATH_MODULE)
-#ROOT_DIR = os.path.dirname(os.path.dirname(PATH_MODULE))
+#ROOT_DIR = os.path.dirname(PATH_MODULE)
+ROOT_DIR = os.path.dirname(os.path.dirname(PATH_MODULE))
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
-
 
 class MelonCrawler:
     def search_song(self, q):
@@ -49,12 +48,22 @@ class MelonCrawler:
         for item in pagelist_li:
             artist_id = item.select_one('button').get('data-artist-no')
             artist = item.select_one('a.ellipsis').get_text(strip=True)
-            nation, gender, solo_group = item.select_one('dd.gubun').get_text(strip=True).split('/')
+            nation_gender_solo = item.select_one('dd.gubun').get_text(strip=True)
+            # nation, gender, solo_group = item.select_one('dd.gubun').get_text(strip=True).split('/')
             genre = item.select_one('div.fc_strong').get_text(strip=True).split(',')
 
-            artist = Artist(artist_id=artist_id, artist=artist, nation=nation, gender=gender,
-                            solo_group=solo_group, genre=genre)
+            artist = Artist(artist_id=artist_id, artist=artist, nation_gender_solo=nation_gender_solo, genre=genre)
             result.append(artist)
+
+            # result.append({
+            #     'artist_id': artist_id,
+            #     'artist': artist,
+            #     'nation_gender_solo': nation_gender_solo,
+            #     # 'nation': nation,
+            #     # 'gender': gender,
+            #     # 'solo_group': solo_group,
+            #     'genre': genre,
+            # })
         return result
 
 
@@ -164,19 +173,20 @@ class Song:
 
 
 class Artist:
-    def __init__(self, artist_id, artist, nation, gender, solo_group, genre):
+    def __init__(self, artist_id, artist, nation_gender_solo, genre):
         self.artist_id = artist_id
         self.artist = artist
-        self.nation = nation
-        self.gender = gender
-        self.solo_group = solo_group
+        self.nation_gender_solo = nation_gender_solo
+        # self.nation = nation
+        # self.gender = gender
+        # self.solo_group = solo_group
         self.genre = genre
 
         self._awards = None
         self._intro = None
 
     def __str__(self):
-        return f'{self.artist} (국적: {self.nation}, 성별: {self.gender}, 솔로/그룹: {self.solo_group}, 장르: {self.genre}'
+        return f'{self.artist} (국적/성별/솔로: {self.nation_gender_solo}, 장르: {self.genre}'
 
     def get_detail(self, refresh_html=False):
         file_path = os.path.join(DATA_DIR, 'artists', f'artist_detail_{self.artist_id}.html')
@@ -193,7 +203,7 @@ class Artist:
                 if file_length < 10:
                     raise ValueError('파일이 너무 짧습니다!')
         except FileExistsError:
-            print(f'"{file_path}" file is already exists!')
+            print(f'"{file_path}" file already exists!')
         except ValueError:
             os.remove(file_path)
             return
@@ -233,3 +243,57 @@ class Artist:
         if not self._intro:
             self.get_detail()
         return self._intro
+
+    def get_songs(self, refresh_html=False):
+        file_path = os.path.join(DATA_DIR, 'artist_song_list', f'artist_song_list_{self.artist_id}.html')
+
+        try:
+            file_mode = 'wt' if refresh_html else 'xt'
+            with open(file_path, file_mode, encoding='utf8') as f:
+                url = 'https://www.melon.com/artist/song.htm'
+                params = {
+                    'artistId': self.artist_id,
+                }
+                response = requests.get(url, params)
+                source = response.text
+                file_length = f.write(source)
+                if file_length < 10:
+                    raise ValueError('파일이 너무 짧습니다!')
+        except FileExistsError:
+            print(f'"{file_path}" file already exists!')
+        except ValueError:
+            os.remove(file_path)
+            return
+
+        source = open(file_path, 'rt', encoding='utf8').read()
+        soup = BeautifulSoup(source, 'lxml')
+
+        tr_list = soup.select('form#frm table > tbody > tr')
+
+        result = []
+        for tr in tr_list:
+            if tr.select_one('td:nth-of-type(1) input[type=checkbox]'):
+                song_id = tr.select_one('td:nth-of-type(1) input[type=checkbox]').get('value')
+                title_a = tr.select_one('td:nth-of-type(3)').a
+                title_exist = [item in ['fc_gray', 'btn'] for item in title_a.get('class')]
+                if sum(title_exist) > 0:
+                    title = title_a.get_text(strip=True)
+                else:
+                    title = ''
+                # title = tr.select_one('td:nth-of-type(3) a.fc_gray').get_text(strip=True)
+                artist = tr.select_one('td:nth-of-type(4) span.checkEllipsis').get_text(strip=True)
+                album = tr.select_one('td:nth-of-type(5) a').get_text(strip=True)
+            else:
+                song_id = ''
+                title = ''
+                artist = ''
+                album = ''
+
+            result.append({
+                'song_id': song_id,
+                'title': title,
+                'artist': artist,
+                'album': album,
+            })
+
+        return result
