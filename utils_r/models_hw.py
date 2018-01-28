@@ -1,12 +1,13 @@
 import os
+import re
 import requests
 from bs4 import BeautifulSoup, NavigableString
 
 PATH_MODULE = os.path.abspath(__file__)
-#PATH_MODULE = '/Users/sangwonhan/projects/crawler/utils_r'
-#ROOT_DIR = os.path.dirname(PATH_MODULE)
+#PATH_MODULE = '/Users/sangwonhan/projects/crawler/utils_r/models_hw.py'
 ROOT_DIR = os.path.dirname(os.path.dirname(PATH_MODULE))
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
+
 
 class MelonCrawler:
     def search_song(self, q):
@@ -51,8 +52,15 @@ class MelonCrawler:
             nation_gender_solo = item.select_one('dd.gubun').get_text(strip=True)
             # nation, gender, solo_group = item.select_one('dd.gubun').get_text(strip=True).split('/')
             genre = item.select_one('div.fc_strong').get_text(strip=True).split(',')
+            url_img_cover_raw = item.select_one('img').get('src')
+            url_match = re.search(r'http://.*?\.jpg', url_img_cover_raw)
+            if url_match:
+                url_img_cover = url_match.group()
+            else:
+                url_img_cover = ''
 
-            artist = Artist(artist_id=artist_id, artist=artist, nation_gender_solo=nation_gender_solo, genre=genre)
+            artist = Artist(artist_id=artist_id, artist=artist, nation_gender_solo=nation_gender_solo,
+                            genre=genre, url_img_cover=url_img_cover)
             result.append(artist)
 
             # result.append({
@@ -63,6 +71,7 @@ class MelonCrawler:
             #     # 'gender': gender,
             #     # 'solo_group': solo_group,
             #     'genre': genre,
+            #     'url_img_cover': url_img_cover,
             # })
         return result
 
@@ -172,8 +181,29 @@ class Song:
         return self._producers
 
 
+# class Artist:
+#     def __init__(self, artist_id, name, url_img_cover):
+#         self.artist_id = artist_id
+#         self.name = name
+#         self.url_img_cover = url_img_cover
+#         self.real_name = None
+#
+#         self._info = {}
+#         self._award_history = []
+#         self._introduction = {}
+#         self._activity_information = {}
+#         self._personal_information = {}
+#         self._related_information = {}
+# "아티스트 채널" 바로 밑에 있는 대표정보 (dict)와
+# 수상이력(list)
+# 아티스트 소개(str)
+# 활동정보(dict)
+# 신상정보(dict)
+# 연관정보(dict)
+
+
 class Artist:
-    def __init__(self, artist_id, artist, nation_gender_solo, genre):
+    def __init__(self, artist_id, artist, nation_gender_solo, genre, url_img_cover):
         self.artist_id = artist_id
         self.artist = artist
         self.nation_gender_solo = nation_gender_solo
@@ -181,9 +211,15 @@ class Artist:
         # self.gender = gender
         # self.solo_group = solo_group
         self.genre = genre
+        self.url_img_cover = url_img_cover
 
-        self._awards = None
-        self._intro = None
+        self._real_name = None
+        self._info = {}
+        self._award_history = []
+        self._introduction = None
+        self._activity_information = {}
+        self._personal_information = {}
+        self._related_information = {}
 
     def __str__(self):
         return f'{self.artist} (국적/성별/솔로: {self.nation_gender_solo}, 장르: {self.genre}'
@@ -211,38 +247,132 @@ class Artist:
         source = open(file_path, 'rt', encoding='utf8').read()
         soup = BeautifulSoup(source, 'lxml')
 
-        awards_dd = soup.select('div.section_atistinfo01 dd')
-        if awards_dd:
-            awards_list = [item.get_text(strip=True) for item in awards_dd]
+        span_realname = soup.select_one('div.wrap_atist_info p.title_atist span.realname')
+        if span_realname:
+            real_name = soup.select_one('div.wrap_atist_info p.title_atist span.realname').get_text(strip=True).strip('()')
         else:
-            awards_list = []
+            real_name = ''
 
-        div_intro = soup.select_one('div.section_atistinfo02 div.atist_insdc')
-        if div_intro:
-            intro_list = []
-            for item in div_intro:
+        atist_info_dt_raw = soup.select('div.wrap_atist_info dl.atist_info dt')
+        atist_info_dd_raw = soup.select('div.wrap_atist_info dl.atist_info dd')
+        atist_info_dt = [item.get_text(strip=True) for item in atist_info_dt_raw]
+        atist_info_dd = []
+        for item in atist_info_dd_raw:
+            if item.select_one('span.gubun'):
+                item = item.select_one('span.gubun')
+            if item.select_one('span.ellipsis'):
+                item = item.select_one('span.ellipsis')
+            atist_info_dd.append(item.get_text(strip=True))
+        info = dict(zip(atist_info_dt, atist_info_dd))
+
+        award_history_dd = soup.select('div.section_atistinfo01 dd')
+        if award_history_dd:
+            award_history = [item.get_text(strip=True) for item in award_history_dd]
+        else:
+            award_history = []
+
+        introduction_div = soup.select_one('div.section_atistinfo02 div.atist_insdc')
+        if introduction_div:
+            introduction_list = []
+            for item in introduction_div:
                 if item.name == 'br':
-                    intro_list.append('\n')
+                    introduction_list.append('\n')
                 elif type(item) is NavigableString:
-                    intro_list.append(item.strip())
-            intro = ''.join(intro_list)
+                    introduction_list.append(item.strip())
+            introduction = ''.join(introduction_list)
         else:
-            intro = ''
+            introduction = ''
 
-        self._awards = awards_list
-        self._intro = intro
+        activity_information_dt_raw = soup.select('div.section_atistinfo03 dl.list_define dt')
+        activity_information_dd_raw = soup.select('div.section_atistinfo03 dl.list_define dd')
+        if activity_information_dt_raw:
+            activity_information_dt = [item.get_text(strip=True) for item in activity_information_dt_raw]
+            activity_information_dd = [item.get_text(strip=True) for item in activity_information_dd_raw]
+            activity_information = dict(zip(activity_information_dt, activity_information_dd))
+        else:
+            activity_information = {}
+
+        personal_information_dt_raw = soup.select('div.section_atistinfo04 dl.list_define dt')
+        personal_information_dd_raw = soup.select('div.section_atistinfo04 dl.list_define dd')
+        if personal_information_dt_raw:
+            personal_information_dt = [item.get_text(strip=True) for item in personal_information_dt_raw]
+            personal_information_dd = [item.get_text(strip=True) for item in personal_information_dd_raw]
+            personal_information = dict(zip(personal_information_dt, personal_information_dd))
+        else:
+            personal_information = {}
+
+        related_information_dt_raw = soup.select('div.section_atistinfo05 dl dt')
+        related_information_dd_raw = soup.select('div.section_atistinfo05 dl dd')
+        if related_information_dt_raw:
+            related_information_dt = [item.get_text(strip=True) for item in related_information_dt_raw]
+            related_information_dd = []
+            for item in related_information_dd_raw:
+                if item.select('button'):
+                    b_item_list = []
+                    for b_item in item.select('button'):
+                        sns_name = b_item.get_text(strip=True)
+                        window_open = b_item.get('onclick')
+                        sns_url = re.search(r"window\.open\('(.*?)'", window_open).group(1)
+                        sns = sns_name + ' (' + sns_url + ')'
+                        b_item_list.append(sns)
+                    item = '\n'.join(b_item_list)
+                if isinstance(item, str):
+                    related_information_dd.append(item)
+                else:
+                    related_information_dd.append(item.get_text(strip=True))
+            related_information = dict(zip(related_information_dt, related_information_dd))
+        else:
+            related_information = {}
+
+        self._real_name = real_name
+        self._info = info
+        self._award_history = award_history
+        self._introduction = introduction
+        self._activity_information = activity_information
+        self._personal_information = personal_information
+        self._related_information = related_information
 
     @property
-    def awards(self):
-        if not self._awards:
+    def real_name(self):
+        if not self._real_name:
             self.get_detail()
-        return self._awards
+        return self._real_name
 
     @property
-    def intro(self):
-        if not self._intro:
+    def info(self):
+        if not self._info:
             self.get_detail()
-        return self._intro
+        return self._info
+
+    @property
+    def award_history(self):
+        if not self._award_history:
+            self.get_detail()
+        return self._award_history
+
+    @property
+    def introduction(self):
+        if not self._introduction:
+            self.get_detail()
+        return self._introduction
+
+    @property
+    def activity_information(self):
+        if not self._activity_information:
+            self.get_detail()
+        return self._activity_information
+
+    @property
+    def personal_information(self):
+        if not self._personal_information:
+            self.get_detail()
+        return self._personal_information
+
+    @property
+    def related_information(self):
+        if not self._related_information:
+            self.get_detail()
+        return self._related_information
 
     def get_songs(self, refresh_html=False):
         file_path = os.path.join(DATA_DIR, 'artist_song_list', f'artist_song_list_{self.artist_id}.html')
