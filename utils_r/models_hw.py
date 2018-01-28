@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup, NavigableString
 
 PATH_MODULE = os.path.abspath(__file__)
-#PATH_MODULE = '/Users/sangwonhan/projects/crawler/utils_r/models_hw.py'
+# PATH_MODULE = '/Users/sangwonhan/projects/crawler/utils_r/models_hw.py'
 ROOT_DIR = os.path.dirname(os.path.dirname(PATH_MODULE))
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
 
@@ -228,7 +228,8 @@ class Artist:
 
         span_realname = soup.select_one('div.wrap_atist_info p.title_atist span.realname')
         if span_realname:
-            real_name = soup.select_one('div.wrap_atist_info p.title_atist span.realname').get_text(strip=True).strip('()')
+            real_name = \
+                soup.select_one('div.wrap_atist_info p.title_atist span.realname').get_text(strip=True).strip('()')
         else:
             real_name = ''
 
