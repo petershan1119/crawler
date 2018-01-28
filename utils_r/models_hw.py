@@ -181,27 +181,6 @@ class Song:
         return self._producers
 
 
-# class Artist:
-#     def __init__(self, artist_id, name, url_img_cover):
-#         self.artist_id = artist_id
-#         self.name = name
-#         self.url_img_cover = url_img_cover
-#         self.real_name = None
-#
-#         self._info = {}
-#         self._award_history = []
-#         self._introduction = {}
-#         self._activity_information = {}
-#         self._personal_information = {}
-#         self._related_information = {}
-# "아티스트 채널" 바로 밑에 있는 대표정보 (dict)와
-# 수상이력(list)
-# 아티스트 소개(str)
-# 활동정보(dict)
-# 신상정보(dict)
-# 연관정보(dict)
-
-
 class Artist:
     def __init__(self, artist_id, artist, nation_gender_solo, genre, url_img_cover):
         self.artist_id = artist_id
